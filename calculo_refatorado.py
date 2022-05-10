@@ -4,14 +4,14 @@ import json
 from datetime import datetime
 
 
-def total_por_pessoa(divided, divisor):
+def total_per_person(divided, divisor):
     try:
         return divided / divisor
     except ZeroDivisionError as zde:
         return 0
 
 
-def somar_frete_ao_total(cell, valor):
+def add_shipping_cost_to_total(cell, valor):
     if not isnan(cell):
         cell += valor
     return cell
@@ -33,24 +33,24 @@ months = {
     12: 'Dezembro',
 }
 
-nome_da_planilha = months[datetime.now().month]
+sheet_name = months[datetime.now().month]  # watchout for the month!
 
-df = pd.read_excel(path, engine="odf", sheet_name=nome_da_planilha)
+df = pd.read_excel(path, engine="odf", sheet_name=sheet_name)
 
-valor_frete = 2
-colunas = list(df.columns)[1:-1]
+shipping_cost = 2  # R$2,00
+columns = list(df.columns)[1:-1]
 df.set_index('Nomes', inplace=True)
 
-for dia in colunas:
+for day in columns:
 
-    pessoas_q_pegaram_marmita = df[df[dia].notna()]
-    num_pes_q_pegaram_marmita = len(pessoas_q_pegaram_marmita.loc[:, dia]) - 1
-    total_pagar_por_pess = total_por_pessoa(valor_frete, num_pes_q_pegaram_marmita)
-    total_dia = df.at['Total Dia', dia] + valor_frete
+    people_who_bought_lunch = df[df[day].notna()]
+    sum_of_people_who_bought_lunch = len(people_who_bought_lunch.loc[:, day]) - 1
+    total_pay_per_person = total_per_person(shipping_cost, sum_of_people_who_bought_lunch)
+    day_total = df.at['Total Dia', day] + shipping_cost
 
-    df[dia] = df.loc[:, dia].apply(somar_frete_ao_total, args=(total_pagar_por_pess,))
+    df[day] = df.loc[:, day].apply(add_shipping_cost_to_total, args=(total_pay_per_person,))
 
-    df.at['Total Dia', dia] = total_dia
+    df.at['Total Dia', day] = day_total
 
 
 df['Total'] = df['Total'].apply(lambda x: 0)
@@ -61,11 +61,11 @@ df.at['Total Dia', 'Total'] = df['Total'].sum() - df.at['Total Dia', 'Total']
 
 print(df.to_string())
 
-arquivo_json = df.to_json(orient='index')
-parsed = json.loads(arquivo_json)
+json_file = df.to_json(orient='index')
+parsed = json.loads(json_file)
 
 with open('/home/dev2/Downloads/marmitastotal.json', 'w') as file:
     file.write(json.dumps(parsed, indent=4))
 
 with pd.ExcelWriter('/home/dev2/Downloads/marmitastotal.ods', engine='odf', mode='w', if_sheet_exists='replace') as writer:
-    df.to_excel(writer, sheet_name=nome_da_planilha)
+    df.to_excel(writer, sheet_name=sheet_name)
